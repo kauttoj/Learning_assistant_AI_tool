@@ -753,7 +753,7 @@ def main():
         print(f"Study plans for student '{student_id}' created.")
 
     # Save the study plans to a pickle file and CSV
-    with open('study_plans_data_v5.pickle', 'wb') as f:
+    with open('study_plans_data.pickle', 'wb') as f:
         pickle.dump(study_plans, f)
 
     df_rows = []
@@ -771,7 +771,7 @@ def main():
         save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase2.pdf', study_plans[sid]['smart_plan_pdf_phase2'])
 
     df_output = pd.DataFrame(df_rows)
-    df_output.to_csv('study_plans_data_v5.csv', index=False)
+    df_output.to_csv('study_plans_data.csv', index=False)
     print("All study plans generated and saved.")
 
 if __name__ == '__main__':
