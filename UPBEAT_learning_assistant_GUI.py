@@ -6,6 +6,7 @@ from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 import os
+import pandas as pd
 import tempfile
 from langchain_community.tools import TavilySearchResults
 from dotenv import load_dotenv
@@ -13,11 +14,13 @@ from dotenv import load_dotenv
 # TODO:
 # -Load/save milestone status from disk
 # -Update milestones when phase is selected
+# -adding more model options
 
 # --- CONFIGURATION ---
-IS_DEBUG = 1
-STUDY_PLANS_FILE = 'study_plans_data.pickle'
-LLM_MODEL="gpt-4o-mini"
+IS_DEBUG = 2
+STUDY_PLANS_FILE = r'learning_plans/study_plans_data.pickle'
+CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
+LLM_MODEL="gpt-4o"
 TRAINING_PERIOD_START = datetime(2025, month=4, day=1, hour=6)
 TRAINING_PERIOD_END = datetime(2025, month=4, day=21, hour=23)
 
@@ -29,13 +32,11 @@ def setup_environment():
     # Set environment variables from .env file
     os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-    os.environ["GOOGLE_CSE_ID"] = os.getenv("GOOGLE_CSE_ID")
-    os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_SEARCH_API")
     os.environ["TAVILY_API_KEY"] = os.getenv('TAVILY_API_KEY')
 
     # Determine current phase
     current_time = datetime.now()
-    if IS_DEBUG:
+    if IS_DEBUG==1:
         return 2  # Force phase 2 in debug mode
     elif current_time < TRAINING_PERIOD_START:
         return 1
@@ -47,18 +48,34 @@ def setup_environment():
 # --- GLOBAL STATE ---
 # Initialize global state
 user_data = None
-user_datasets = None
+session_counter = 0
+session_snapshots = []
+print('loading study plans data...',end='')
+user_datasets = pickle.load(open(STUDY_PLANS_FILE, 'rb')) # AT ROOT
+print(f' done ({len(user_datasets)} items loaded)')
+print('loading curated materials data...',end='')
+additional_courses_data = pd.read_csv(CURATED_MATERIALS_FILE, sep='|', index_col=0)
+additional_courses_data = (additional_courses_data['description'] + ' URL: ' + additional_courses_data['url']).to_list()
+print(f' done ({len(additional_courses_data)} items)')
 llm_options = {}
+print('setting environment...',end='')
 current_phase = setup_environment()
+print(' done')
 current_selected_phase = current_phase
+checkbox_elems = []
 
 # --- TOOLS ---
+@tool
+def additional_materials_tool():
+    """List of additional learning materials, such as videos, articles and courses, covering topics of teaching"""
+    print('Obtaining learning materials')
+    return additional_courses_data
+
 @tool
 def phase1_plan_tool():
     """Contains the personalized smart learning plan created for the student"""
     print('Obtaining smart_plan_phase1')
     return user_data['smart_plan_phase1']
-
 
 @tool
 def phase2_plan_tool():
@@ -87,9 +104,10 @@ def create_agent(tools_list):
         checkpointer=llm_options['memory']
     )
 
-
 def update_agents():
     """Update the LLM agents based on current options"""
+    global llm_options
+
     llm_options['config'] = {"configurable": {"thread_id": "1"}}
     llm_options['memory'] = MemorySaver()
 
@@ -97,32 +115,42 @@ def update_agents():
     phase1_tools = []
     phase2_tools = []
 
+    print('updating agents...',end='')
     if llm_options['use_search_tool']:
+        print(' adding search tool ',end=' ')
         search_tool = initialize_search_tool()
         phase1_tools.append(search_tool)
         phase2_tools.append(search_tool)
 
     if llm_options['use_plan_tool']:
+        print(' adding plan tool ', end=' ')
         phase1_tools.append(phase1_plan_tool)
         phase2_tools.append(phase2_plan_tool)
+
+    if llm_options['use_learningmaterial_tool']:
+        print(' adding learning materials tool ', end=' ')
+        phase1_tools.append(additional_materials_tool)
+        phase2_tools.append(additional_materials_tool)
 
     # Create agents with appropriate tools
     llm_options['agent_phase1'] = create_agent(phase1_tools)
     llm_options['agent_phase2'] = create_agent(phase2_tools)
+    print(' ...done')
 
 def predict(message, history):
     """Handle message prediction using the appropriate agent"""
+    global session_counter
+
     if len(history) == 0:
-        print('...empty history, creating agents')
+        if session_counter>0:
+            agent = llm_options['agent_phase1'] if current_phase == 1 else llm_options['agent_phase2']
+            snapshot = agent.get_state(llm_options['config'])
+            session_snapshots.append(snapshot)
         update_agents()
+        session_counter+=1
 
     # Determine which agent to use based on current phase
     agent = llm_options['agent_phase1'] if current_phase == 1 else llm_options['agent_phase2']
-
-    # Get current state and debug info
-    snapshot = agent.get_state(llm_options['config'])
-    snapshot_size = len(snapshot.values['messages']) if len(snapshot.values) else 0
-    print(f"current history size: Gradio {len(history)}, Agent {snapshot_size}")
 
     # Invoke the agent
     response = agent.invoke(
@@ -187,21 +215,13 @@ def save_user_state(username, state):
                 pass
         return False
 
-def load_user_datasets():
-    """Load user datasets from pickle file"""
-    global user_datasets
-    user_datasets = pickle.load(open(STUDY_PLANS_FILE, 'rb'))
-
 def authenticate(username, password):
     """Authenticate user with username and password"""
     global user_data
 
-    # Ensure user_datasets is loaded
-    if user_datasets is None:
-        load_user_datasets()
-
     if username in user_datasets and user_datasets[username]['password'] == password:
         user_data = user_datasets[username]
+        user_data['username'] = username
         user_data['learning_state'] = load_user_state(username)
 
         if user_data['learning_state'] is None:
@@ -222,7 +242,7 @@ def authenticate(username, password):
 
     return False
 
-def reset_to_defaults():
+def reset_to_defaults(*args):
     """Reset llm_options to default values"""
     global llm_options
 
@@ -233,6 +253,13 @@ def reset_to_defaults():
         'use_learningmaterial_tool': 1,
         'temperature': 0.3
     }
+    return [
+        llm_options['system_prompt'],
+        llm_options['temperature'],
+        llm_options['use_plan_tool'],
+        llm_options['use_search_tool'],
+        llm_options['use_learningmaterial_tool']
+    ]
 
 # --- USER INTERFACE HELPERS ---
 def save_pdf_file():
@@ -247,8 +274,7 @@ def save_pdf_file():
 
     return file_path
 
-
-def load_user_data(_):
+def load_user_data(*args):
     """Load user greeting message based on selected phase"""
     user_name = user_data['data']['Q1. Full Name']
 
@@ -257,11 +283,9 @@ def load_user_data(_):
     else:
         return f"Hello **{user_name}**! Below is you personalized UPBEAT learning plan for training phase. You can go back to onboarding phase plan if you need to."
 
-
-def load_smart_plan(_):
+def load_smart_plan(*args):
     """Load the appropriate smart plan based on selected phase"""
     return user_data['smart_plan_phase1'] if current_selected_phase == 1 else user_data['smart_plan_phase2']
-
 
 def get_current_date_message():
     """Generate a message with the current date and phase information"""
@@ -273,7 +297,6 @@ def get_current_date_message():
         return f"**{current_date}<br>We're in training phase.**"
     else:
         return f"**{current_date}<br>We're in past-training phase.**"
-
 
 # --- SETTINGS PANEL FUNCTIONS ---
 def apply_and_close(system_prompt, temperature, learning_plans_checkbox,
@@ -290,7 +313,6 @@ def apply_and_close(system_prompt, temperature, learning_plans_checkbox,
     update_agents()
     return gr.update(visible=False)
 
-
 def close_no_changes():
     """Close settings panel without applying changes"""
     return gr.update(visible=False)
@@ -299,12 +321,14 @@ def toggle_milestones_panel():
     """Make the milestones panel visible"""
     return gr.update(visible=True)
 
-def close_milestones_panel(checkbox_values):
+def close_milestones_panel(*checkboxes):
     """Hide the milestones panel"""
 
     if user_data and "learning_state" in user_data:
-        user_data['learning_state'][current_selected_phase]['states'] = checkbox_values
-        save_user_state(user_data['data']['Q1. Full Name'], user_data['learning_state'])
+        user_data['learning_state'][current_selected_phase]['states'] = checkboxes
+        save_user_state(user_data['username'],user_data['learning_state'])
+    else:
+        raise Exception("user_data has no learning_state attribute")
 
     return gr.update(visible=False)
 
@@ -351,20 +375,13 @@ def toggle_visibility(visible):
     """Toggle visibility of the smart plan"""
     return not visible, gr.update(visible=not visible)
 
-def load_milestone_data():
-    """Retrieve milestone tasks and their completion states from user_data"""
-    if user_data and "milestones" in user_data:
-        tasks = user_data["milestones"].get("tasks", [])
-        states = user_data["milestones"].get("states", [False] * len(tasks))  # Default: All unchecked
-        return tasks, states
-    return [], []
-
-def update_milestone_checkboxes():
-    """Dynamically update milestone checkboxes after GUI is launched"""
-
-    task_texts, task_states = ['test1','afsa afasffssasfafasf'],[True,False]
-    checkboxes = [gr.Checkbox(label=task_texts[i], value=task_states[i]) for i in range(len(task_texts))]
-    return checkboxes
+# def load_milestone_data():
+#     """Retrieve milestone tasks and their completion states from user_data"""
+#     if user_data and "milestones" in user_data:
+#         tasks = user_data["milestones"].get("tasks", [])
+#         states = user_data["milestones"].get("states", [False] * len(tasks))  # Default: All unchecked
+#         return tasks, states
+#     return [], []
 
 # --- MAIN UI DEFINITION ---
 def create_chatbot_interface():
@@ -444,9 +461,10 @@ def create_chatbot_interface():
         font-size: 16px;        
     }
     """
+    global checkbox_elems
 
     with gr.Blocks(css=css) as app:
-        checkbox_data = gr.State({'labels': [], 'states': []})
+        rerender_trigger = gr.State(value=0)
 
         with gr.Row():
             # Sidebar
@@ -534,31 +552,26 @@ def create_chatbot_interface():
                 gr.Markdown("## My milestones  \nThese are tasks related to your learning plan. Tick when completed.")
 
                 # Task checkboxes
-                @gr.render(inputs=checkbox_data)
-                def render_checkboxes(data):
+                @gr.render(inputs=[rerender_trigger])
+                def render_checkboxes(trigger):
+                    global user_data
                     """Dynamically generates checkboxes based on user login."""
-                    checkboxes = []
-                    if 'learning_state' in data:
-                        labels, states = data['learning_state'][current_selected_phase]['labels'],data['learning_state'][current_selected_phase]['states']
+                    # Dynamically creating checkboxes
+                    if user_data is None:
+                        checkboxes = []
                     else:
-                        labels, states = [],[]
+                        data = user_data['learning_state'][current_selected_phase]
+                        checkboxes = [gr.Checkbox(label=data['labels'][k], value=data['states'][k]) for k in
+                                      range(len(data['labels']))]
 
-                    with gr.Column():
-                        for label, state in zip(labels, states):
-                            checkboxes.append(gr.Checkbox(label=label, value=state))
-
-                    return checkboxes  # Not necessary, but for clarity
-
-                close_milestones_btn = gr.Button("Close", elem_classes="plan-button")
+                    close_milestones_btn = gr.Button("Close", elem_classes="plan-button")
+                    # Connecting button click to process function
+                    close_milestones_btn.click(
+                        close_milestones_panel,inputs=checkboxes,outputs=[milestones_panel]
+                    )
 
             milestones_btn.click(
                 toggle_milestones_panel,
-                outputs=[milestones_panel]
-            )
-
-            close_milestones_btn.click(
-                close_milestones_panel,
-                inputs=[checkbox_data],
                 outputs=[milestones_panel]
             )
 
@@ -584,7 +597,7 @@ def create_chatbot_interface():
                     gr.Markdown("**LLM tools:**")
                     learning_plans_checkbox = gr.Checkbox(label="Learning Plans")
                     internet_search_checkbox = gr.Checkbox(label="Internet Search")
-                    learning_material_checkbox = gr.Checkbox(label="Learning materials", visible=False)
+                    learning_material_checkbox = gr.Checkbox(label="Learning materials")
 
                 reset_settings_button = gr.Button("Reset settings to default")
 
@@ -608,6 +621,7 @@ def create_chatbot_interface():
 
                 reset_settings_button.click(
                     reset_to_defaults,
+                    inputs=None,
                     outputs=[
                         system_prompt,
                         temperature,
@@ -629,28 +643,25 @@ def create_chatbot_interface():
                 )
                 close_no_changes_button.click(close_no_changes, outputs=settings_panel)
 
-        def update_ui():
-            """Updates UI state when a user logs in."""
-            return user_data  # Update state with user-specific checkbox data
-
-        # Call update_ui to refresh UI after login
-        app.load(update_ui, inputs=[], outputs=[checkbox_data])
+        app.load(lambda x: x, inputs=[rerender_trigger], outputs=[rerender_trigger])
 
     return app
 
 # --- MAIN EXECUTION ---
 def main():
     """Main function to launch the application"""
-    # Load user datasets
-    load_user_datasets()
-
     # Create the interface
     demo = create_chatbot_interface()
 
     # Launch the app with appropriate settings
-    if IS_DEBUG:
+    if IS_DEBUG==1:
         IDs = list(user_datasets.keys())
         ind = 1
+        authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
+        demo.launch(share=False, allowed_paths=["logo.png"])
+    elif IS_DEBUG==2:
+        IDs = list(user_datasets.keys())
+        ind = 3
         authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
         demo.launch(share=False, allowed_paths=["logo.png"])
     else:

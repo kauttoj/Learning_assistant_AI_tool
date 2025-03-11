@@ -135,7 +135,7 @@ Below is your personalized plan to build the foundational skills you currently r
 
 [a detailed, step-by-step study plan with clear steps for each of the {skill_gaps_count} topics]
 
-## 4. Assignments
+## 4. Extra assignments
 
 [Two personalized small and fan learning practical assignments for each of the {skill_gaps_count} topics, i.e., total {total_assignment_count}]
 
