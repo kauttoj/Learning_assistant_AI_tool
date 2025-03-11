@@ -234,7 +234,7 @@ Remember to use Markdown format and include the plan inside <Smart_Learning_Plan
 PROMPT_TEMPLATE_PHASE2 = '''
 # ROLE #
 
-You are a teacher tasked with creating a personalized Smart Learning Plan for the training phase. 
+You are a teacher tasked with creating a personalized Smart Learning Plan for a student to support his/her learning and entrepreneurship. 
 
 # CONTEXT #
 
@@ -370,7 +370,7 @@ Always provide your list in the following format in side <milestones> tags with 
 <milestoneN>[very short description]</milestoneN>
 </milestones>
 
-The number N of milestones depends on length and content of the learning plan, but should be between 3-15. Do not include very milestones.
+The number N of milestones depends on number of tasks, length and content of the learning plan, but should be between 3-15. Milestones must be always related to the learning plan.
 '''
 
 PROMPT_TEMPLATE_ASSISTANT = '''
