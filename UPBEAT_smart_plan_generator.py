@@ -43,10 +43,11 @@ else:
     llm_config_large = {
         "model": 'claude-3-7-sonnet-latest',
         "max_tokens": 16384,
-        "temperature": 0.1,
+        "temperature": 0.2,
+        "thinking": {"type": "enabled", "budget_tokens": 4000}
     }
     llm_config_small = {
-        "model": 'gpt-4o-mini',
+        "model": 'gpt-4o',
         "temperature": 0.0,
         "max_tokens": 16384
     }
@@ -63,39 +64,21 @@ You are a teacher whose task is to evaluate the skill level of a student and hel
 
 # CONTEXT #
 
-The training session topics are divided into four themes (core modules):
+The training session topics are divided into four core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
 
-1. Understanding AI basics
-- Basic technologies and definitions
-- Ecosystems and tools
-- Prompt design
-- Ethics and legal issues
+<core_modules>
+{core_modules_description}
+</core_modules>
 
-2. AI for Business Planning
-- Market and customer understanding
-- Defining the business idea
-- Interactive Business Plan canvas
-
-3. Business Prompting Workshop
-- AI tools for business
-- AI for different business tasks
-- AI for industry specific information
-- AI enabled business coaching
-
-4. AI for Business Success
-- Marketing, sales and customer service
-- Cross-border business and networking
-- Future-proofing business
-
-We want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises. 
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises. 
 
 # STUDENT #
 
 The student has provided the following information via a survey (Q1-Q18):
 
-[student data begins]
+<student_data>
 {student_information}
-[student data ends]
+</student_data>
 
 The student has BEGINNER level knowledge in the following skills (identified as {skill_gaps_count} topics):
 {skill_gaps}
@@ -137,7 +120,7 @@ Below is your personalized plan to build the foundational skills you currently r
 
 ## 4. Extra assignments
 
-[Two personalized small and fan learning practical assignments for each of the {skill_gaps_count} topics, i.e., total {total_assignment_count}]
+[Two personalized small and fun learning assignments for each of the {skill_gaps_count} topics (total {total_assignment_count} assignments). Each assignment needs students to apply generative AI to solve a problem and explain the process with tools and prompts they used.]
 
 {ending_text}
 </Smart_Learning_Plan>
@@ -165,20 +148,22 @@ You are a teacher tasked with creating a personalized Smart Learning Plan (SLP) 
 
 # CONTEXT #
 
-Our training topics include:
+The training session topics are divided into four (4) core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
 
-- Understanding AI basics (technologies, definitions, ecosystems, prompt design, ethics)
-- AI for Business Planning (market understanding, business idea definition, interactive canvas)
-- Business Prompting Workshop (tools for business, industry specifics, coaching)
-- AI for Business Success (marketing, sales, customer service, cross-border networking, future-proofing)
+<core_modules>
+{core_modules_description}
+</core_modules>
+
+These modules are general for all students without any personalization. 
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises.
 
 # STUDENT #
 
 The student provided the following background information (Q1-Q18):
 
-[student data begins]
+<student_data>
 {student_information}
-[student data ends]
+</student_data>
 
 # TASK #
 
@@ -194,19 +179,19 @@ Create a personalized Smart Learning Plan that deepens the student’s skills. T
 
 Dear [insert student name here],
 
-Based on your survey responses, you already have a basic understanding of the core topics. This plan provides additional goals, exercises, and resources to help you improve further.
+Based on your survey responses, you already have a at least basic understanding of the core topics. This plan provides additional goals, exercises, and resources to help you improve further.
 
-## 1. Learning Goals
+## 1. Advanced learning goals
 
-[explain detailed learning goals]
+[Taking into account student background and industry, develop 1-3 learning goals for the student to deepen his/her skills and prepare for the training period.]
 
 ## 2. Your tailored study plan
 
-[a comprehensive step-by-step plan for skill improvement]
+[Develop step-by step plan for reaching advanced learning goals listed above.]
 
-## 3. Assignments
+## 3. Extra assignments
 
-[3-6 personalized assignments]
+[Develop 2-4 small and engaging personalized assignments for the student to test his/her skills. Each assignment needs students to apply generative AI to solve a problem and explain the process with tools and prompts they used.]
 
 {ending_text}
 </Smart_Learning_Plan>
@@ -220,6 +205,7 @@ Final Output Structure: The final output should be written entirely in MARKDOWN,
 When writing SLP, use clear structure and bullet-points.
 
 Important:
+-Use the provided format of the output where you complete the parts pointed by parenthesis [...]
 -Do NOT include timetable for the plan (don't include "Week 1" or "Day 1" or similar). Student studies in his/her own pace.
 -Plan is targeted for learning at home in max 2 weeks, so do not include complex and long-term tasks/goals, such as "participate in networking events" or "enroll to local University"
 -Do NOT simply copy-paste list of topic as listed above, but adapt them into suitable learning goals for the student  
@@ -228,70 +214,67 @@ Important:
 
 Now, following all above instructions and given plan structure, write the complete personalized Smart Learning Plan for the student. 
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
-
 '''
 
 PROMPT_TEMPLATE_PHASE2 = '''
 # ROLE #
 
-You are a teacher tasked with creating a personalized Smart Learning Plan for a student to support his/her learning and entrepreneurship. 
+You are a teacher tasked with creating a personalized Smart Learning Plan (SLP) for a student to support his/her learning and entrepreneurship. 
 
 # CONTEXT #
 
-The training topics are as follows:
+The training session topics are divided into four (4) core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
 
-- Understanding AI basics (technologies, tools, prompt design, ethics)
-- AI for Business Planning (market analysis, business idea development, interactive canvas)
-- Business Prompting Workshop (AI tools for business, industry-specific information, coaching)
-- AI for Business Success (marketing, sales, networking, future-proofing)
+<core_modules>
+{core_modules_description}
+</core_modules>
+
+These modules are general for all students without any personalization. 
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises.
 
 # STUDENT #
 
 The student provided the following background information (Q1-Q18):
 
-[student data begins]
+<student_data>
 {student_information}
-[student data ends]
+</student_data>
 
 # TASK #
 
-Create a personalized Smart Learning Plan (SLP) for the training phase. Your answer must be in Markdown format with the following structure where you need to write parts inside parenthesis [...]:
+We want to provide the student a personalized Smart Learning Plan to support general teaching. You myst create a personalized Smart Learning Plan for the student to support him/her during the training phase. Your answer must be in Markdown format with the following structure where you must write parts inside parenthesis [...].
 
--------
-<planning>
-[your detailed internal plan for the training phase]
-</planning>
+---------------
+<internal_planning>
+[your detailed internal thinking and planning how to write the Smart Learning Plan]
+</internal_planning>
 
 <Smart_Learning_Plan>
 # Smart learning plan (training)
 
-Dear [insert student name here],
+Dear [insert student name here]
 
-This plan is designed to support your learning during the training period and after it.
+This plan is designed to support your learning during the training period.
 
 ## 1. Learning objectives*
 
-[develop 4 personal learning objectives aligned with training topics with industry focus, and by taking into account student preferences/background]
+[For each of the 4 training modules, define a clear personalized learning objectives for the student. These objectives must have a clear industry focus that aligns with student background, industry and aims.]
 
-## 2. Learning plan
+## 2. Your tailored learning plan
 
-[develop a clear, step-by-step plan how to reach all 4 personal learning objectives]
+[For each of the 4 learning objectives, develop a clear, step-by-step plan how to reach those objectives.]
 
-## 3. Assignments
+## 3. Extra Assignments
 
-[develop 4 personalized small and fun assignments to test new skills with industry focus]
+[For each of the 4 learning objectives, develop a personalized small and fun assignment to test their skills with industry focus (total 4 assignments). Each assignment needs students to apply generative AI to solve a problem and explain the process with tools and prompts they used.]
 
-## 4. Your mini-project
+## 4. Tips
 
-[a practical business mini-project aligned with student goals]
-
-## 5. Tips
-
-[create personalized tips and encouragement for the student how to study, develop and reach his/her aims]
+[Give 3-6 personalized tips and encouragement for the student how to study, develop and reach his/her aims and dreams.]
 
 We hope you have a fruitful learning period. If you have any questions, please contact teachers.
 </Smart_Learning_Plan>
--------
+---------------
 
 # INSTRUCTIONS #
 
@@ -301,13 +284,13 @@ Final Output Structure: The final output should be written entirely in MARKDOWN,
 When writing SLP, use clear structure and bullet-points.
 
 Important:
+-Use the provided format of the output where you complete the parts pointed by parenthesis [...]
 -Do NOT include detailed timetable (e.g., specific dates) for the plan. Student studies in his/her own pace.
--DO NOT simply copy-paste core topics, but adapt them for the student
+-DO NOT simply copy-paste of core topics or assignments, the plan must be adapted for the student
 -Think which topics are most relevant for this particular student taken into account his preferences and aims
 
 Now, following all above instructions and given plan structure, write the complete personalized, short to long-term Smart Learning Plan for the student. 
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
-
 '''
 
 PROMPT_TEMPLATE_ADDITIONAL_MATERIALS = '''** TASK **
@@ -342,12 +325,11 @@ Respond with an integer list in the format like "[1,2,3,4,5,6]".
 '''
 
 PROMPT_TEMPLATE_CHECKPOINT_EXTRACTOR = '''
-You are given a learning plan, so called Smart Learning Plan, which was made for a student. You task is to create a list of milestones based on that learning plan, which student will tick once completed.
-Here is the Smart Learning Plan of the student, given inside <Smart_Learning_Plan> tags:
+You are given a learning plan, so called Smart Learning Plan, which was made for a student. You task is to create a list of milestones based on this learning plan. Student will "tick" those milestones once completed as he/she follows the plan.
 
 # SMART LEARNING PLAN #
 
-This is the personalized learning plan of the student:
+This is the personalized Smart Learning Plan given inside <Smart_Learning_Plan> tags:
 
 <Smart_Learning_Plan>
 {learning_plan}
@@ -356,21 +338,21 @@ This is the personalized learning plan of the student:
 # TASK #
 
 Based on the learning plan, create a list of milestones that student needs to finish in order to complete the Smart Learning Plan. 
-These milestones must be extracted directly from the plan itself, containing all major tasks and steps to be completed.
-Idea is that the student will tick these items as he/she proceeds with the plan, eventually ticking all milestones once completed. 
-Each milestone is one relatively small step.
+These milestones must be extracted directly from the plan itself, containing all major tasks and steps written in the plan.
+Idea is that the student will tick these items as he/she proceeds with the plan, eventually ticking all milestones once the plan is completed. 
+Each milestone is one logical and sequential step in the learning process.
 
-Always provide your list in the following format in side <milestones> tags with your very short descriptions inside parenthesis [...]:
+Always provide your list in the following format in side <milestones> tags with short descriptions inside parenthesis [...]:
 
 <milestones>
-<milestone1>[very short description]</milestone1>
-<milestone2>[very short description]</milestone2>
-<milestone3>[very short description]</milestone3>
+<milestone1>1. [short description of the milestone]</milestone1>
+<milestone2>2. [short description of the milestone]</milestone2>
+<milestone3>3. [short description of the milestone]</milestone3>
 ...
-<milestoneN>[very short description]</milestoneN>
+<milestoneN>N. [short description of the milestone]</milestoneN>
 </milestones>
 
-The number N of milestones depends on number of tasks, length and content of the learning plan, but should be between 3-15. Milestones must be always related to the learning plan.
+The number N of milestones depends on the content in the learning plan, but should be between 3-10. All milestones must be always related to the learning plan. Milestones must be very clear and logical. Follow a good pedagogical process in creating milestones.
 '''
 
 PROMPT_TEMPLATE_ASSISTANT = '''
@@ -380,39 +362,19 @@ You are a smart "UPBEAT Learning Assistant" whose task is to help a student in l
 
 # CONTEXT #
 
-Student is participating in learning period with supervised, on-site teaching. Aim is to teach students about the following main themes (core learning modules):
+The training session topics are divided into four core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
 
-1. Understanding AI basics
--Basic technologies and definitions
--Ecosystems and tools
--Prompt design
--Ethics and legal issues
+{core_modules_description}
 
-2. AI for Business Planning
--Market and customer understanding
--Defining the business idea
--Interactive Business Plan canvas
-
-3. Business Prompting Workshop
--AI tools for business
--AI for different business tasks
--AI for industry specific information
--AI enabled business coaching
-
-4. AI for Business Success
--Marketing, sales and customer service
--Cross-border business and networking (Q&A)
--Future-proofing business
-
-Aim is to develop entrepreneurial mindset via integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping and testing, personal reflections, self-directed assignments, and ideation exercises. 
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises. 
 
 # STUDENT #
 
 The student has provided the following information of himself/herself via a survey that contains 18 questions [Q1-Q18]:
 
-[student data begins]
+<student_data>
 {student_information}
-[student data ends]
+</student_data>
 
 Questions Q11.1 - Q11.8 are related to student starting skills in the beginning of training period.
 Always remember this student information and use it to personalize your responses for the student. 
@@ -435,6 +397,15 @@ Your task is to help the student to his/her studies and learning. You provide pe
 # -----------------------------
 # Utility Functions
 # -----------------------------
+def read_text_file(filepath):
+    """Read text file with error handling"""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        log_print(f"Error reading file {filepath}: {str(e)}")
+        raise
+
 def create_modern_happy_smiley():
     """Creates a modern flat-style happy smiley image and returns it as a Base64 data URI."""
     size = (64, 64)
@@ -563,7 +534,7 @@ def extract_plan(raw_smart_plan):
         raise Exception("Missing </Smart_Learning_Plan> tag")
     return plan[:end].strip()
 
-def create_plan_prompt(incoming_survey_data, study_materials, phase=1):
+def create_plan_prompt(incoming_survey_data,core_modules_data,study_materials, phase=1):
     """
     Constructs the student information prompt and selects the appropriate LLM template based on phase.
     For phase1, if beginner skill gaps are detected, it injects the curated materials from study_materials
@@ -604,6 +575,7 @@ def create_plan_prompt(incoming_survey_data, study_materials, phase=1):
         template = PHASE1_PROMPT_TEMPLATE_ADVANCED
     if phase == 1:
         prompt = template.replace('{student_information}', student_information_prompt)
+        prompt = prompt.replace('{core_modules_description}', core_modules_data)
         prompt = prompt.replace('{total_assignment_count}', str(count * 2))
         prompt = prompt.replace('{skill_gaps}', skill_gaps)
         prompt = prompt.replace('{beginner_level_materials}', beginner_materials_str)
@@ -611,6 +583,7 @@ def create_plan_prompt(incoming_survey_data, study_materials, phase=1):
         prompt = prompt.replace('{ending_text}', ending_text)
     elif phase == 2:
         prompt = PROMPT_TEMPLATE_PHASE2.replace('{student_information}', student_information_prompt)
+        prompt = prompt.replace('{core_modules_description}', core_modules_data)
     else:
         raise ValueError("Invalid phase specified.")
     # Retrieve student identifier from a key field (for example, Q1. Full Name)
@@ -621,7 +594,8 @@ def create_plan_prompt(incoming_survey_data, study_materials, phase=1):
 # SmartPlanGenerator Class
 # -----------------------------
 class SmartPlanGenerator:
-    def __init__(self, study_materials, additional_courses_data, llm_config_large, llm_config_small, happy_img):
+    def __init__(self, core_modules_data,study_materials, additional_courses_data, llm_config_large, llm_config_small, happy_img):
+        self.core_modules_data = core_modules_data
         self.study_materials = study_materials
         self.additional_courses_data = additional_courses_data
         self.llm_config_large = llm_config_large
@@ -642,7 +616,7 @@ class SmartPlanGenerator:
         Generates the smart plan for a given phase.
         Returns a dictionary with plan_prompt, smart_plan, pdf content, student_info, recommended_materials, and student_id.
         """
-        prompt, student_info, recommended_materials, student_id = create_plan_prompt(student_data, self.study_materials, phase=phase)
+        prompt, student_info, recommended_materials, student_id = create_plan_prompt(student_data,self.core_modules_data,self.study_materials, phase=phase)
         raw_plan = get_llm_response(prompt, self.llm_config_large)
         plan_content = extract_plan(raw_plan)
         if phase == 1:
@@ -702,19 +676,21 @@ def main():
     study_materials = pd.read_excel(r'data/beginner_materials.xlsx', index_col=0)
     incoming_survey_data = pd.read_excel(r'data/Application_forms_6_personas.xlsx', index_col=0)
     additional_courses_data = pd.read_csv(r'data/curated_additional_materials.txt', sep='|', index_col=0)
-    plan_output_path = r'C:\code\UPBEAT_studyguide\learning_plans'
+    core_modules_data = read_text_file(r'data/description_of_training.txt')
+
+    plan_output_path = r'C:\code\Learning_assistant_AI_tool\learning_plans'
 
     # Create a happy smiley image for later use
     happy_img = create_modern_happy_smiley()
 
     # Initialize the plan generator with study_materials included
-    plan_generator = SmartPlanGenerator(study_materials, additional_courses_data, llm_config_large, llm_config_small, happy_img)
+    plan_generator = SmartPlanGenerator(core_modules_data,study_materials, additional_courses_data, llm_config_large, llm_config_small,happy_img)
 
     study_plans = {}
     existing_ids = set()
     # Iterate over each student (each column represents one student's survey responses)
     for plan_k,col in enumerate(incoming_survey_data.columns):
-        print(f'generatirg plan {plan_k+1} or {incoming_survey_data.shape[1]}')
+        print(f'generating plan {plan_k+1} or {incoming_survey_data.shape[1]}')
         student_data = incoming_survey_data[col]
         # Generate plan for phase 1 (onboarding)
         phase1_result = plan_generator.generate_phase_plan(student_data, phase=1)

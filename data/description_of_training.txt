@@ -1,0 +1,60 @@
+{
+  "modules": [
+    {
+      "title": "MODULE 1: Understanding AI basics",
+      "objectives": [
+        "Understand the fundamental technologies and ecosystems of AI and their relevance to business.",
+        "Identify various AI tools for different tasks in entrepreneurship.",
+        "Learn the basics of prompt design and multimodal prompting to interact effectively with AI systems.",
+        "Recognize the ethical and legal issues surrounding AI use in business."
+      ],
+      "assignments": [
+        "Use and compare different genAI tools",
+        "Generate information and create content"
+      ]
+    },
+    {
+      "title": "MODULE 2: AI for Business Planning",
+      "objectives": [
+        "Using AI tools to clarify and define the initial business idea.",
+        "Using AI tools for competitor and market analysis to identify opportunities and challenges.",
+        "Creating customer personas and map customer journeys with AI to improve decision-making.",
+        "Analyzing customer insights using AI-powered methods.",
+        "Using the Custom GPT to build the first version on the business plan."
+      ],
+      "assignments": [
+        "Pestel analysis of the market",
+        "Customer personas and journeys",
+        "Continue refining the Business Plan"
+      ]
+    },
+    {
+      "title": "MODULE 3: Business Prompting Workshop",
+      "objectives": [
+        "Understand how AI supports compliance with legal and tax issues.",
+        "Assess the validity and reliability of different AI tools.",
+        "Utilize different content creation tools for business tasks.",
+        "Apply structured prompts for business impact, industry related information and self-development."
+      ],
+      "assignments": [
+        "Making business materials with AI, for example a pitch deck",
+        "Comparing output from smart guide and LLMs",
+        "Making your own custom GPT (setting system prompt and knowledgebase)"
+      ]
+    },
+    {
+      "title": "MODULE 4: AI for Business Success",
+      "objectives": [
+        "Use AI tools for strategic brand planning, marketing campaigns and marketing content.",
+        "Use AI-powered tools (e.g., chatbots) for customer service and engagement.",
+        "Utilize AI for networking and establishing international partnerships.",
+        "Apply future-thinking techniques using AI to anticipate trends, identify weak signals and develop future business scenarios."
+      ],
+      "assignments": [
+        "Making a marketing/sales campaign",
+        "Finalizing the Business Plan",
+        "Completing feedback and registration forms"
+      ]
+    }
+  ]
+}

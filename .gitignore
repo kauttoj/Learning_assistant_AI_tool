@@ -1,3 +1,5 @@
 *.pptx
 /.idea
 .env
+/temp
+/temp
