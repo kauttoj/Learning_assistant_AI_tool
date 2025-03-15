@@ -13,8 +13,6 @@ from langchain_core.messages import AIMessage,AIMessageChunk,ToolMessage
 from dotenv import load_dotenv
 
 # TODO:
-# -Load/save milestone status from disk
-# -Update milestones when phase is selected
 # -adding more model options
 
 # --- CONFIGURATION ---
