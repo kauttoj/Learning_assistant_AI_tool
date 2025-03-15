@@ -9,6 +9,7 @@ import os
 import pandas as pd
 import tempfile
 from langchain_community.tools import TavilySearchResults
+from langchain_core.messages import AIMessage,AIMessageChunk,ToolMessage
 from dotenv import load_dotenv
 
 # TODO:
@@ -23,6 +24,7 @@ CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
 LLM_MODEL="gpt-4o"
 TRAINING_PERIOD_START = datetime(2025, month=4, day=1, hour=6)
 TRAINING_PERIOD_END = datetime(2025, month=4, day=21, hour=23)
+ENABLE_STREAM=1
 
 # --- ENVIRONMENT SETUP ---
 def setup_environment():
@@ -83,6 +85,12 @@ def phase2_plan_tool():
     print('Obtaining smart_plan_phase2')
     return user_data['smart_plan_phase2']
 
+@tool
+def milestones_tool():
+    """Contains the personalized milestones (max 10) created for the student"""
+    print('Obtaining milestones')
+    return user_data['milestones']
+
 def initialize_search_tool():
     """Initialize the search tool"""
     return TavilySearchResults(
@@ -132,6 +140,11 @@ def update_agents():
         phase1_tools.append(additional_materials_tool)
         phase2_tools.append(additional_materials_tool)
 
+    if llm_options['use_milestones_tool']:
+        print(' adding milestones tool ', end=' ')
+        phase1_tools.append(milestones_tool)
+        phase2_tools.append(milestones_tool)
+
     # Create agents with appropriate tools
     llm_options['agent_phase1'] = create_agent(phase1_tools)
     llm_options['agent_phase2'] = create_agent(phase2_tools)
@@ -153,13 +166,23 @@ def predict(message, history):
     agent = llm_options['agent_phase1'] if current_phase == 1 else llm_options['agent_phase2']
 
     # Invoke the agent
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": message}]},
-        llm_options['config'],
-        stream_mode="values",
-    )
+    if ENABLE_STREAM:
+        response = ''
+        for msg, metadata in agent.stream({"messages": [{"role": "user", "content": message}]},llm_options['config'],stream_mode="messages"):
+            if isinstance(msg, AIMessageChunk) or isinstance(msg, AIMessage):
+                response += msg.content
+            elif isinstance(msg, ToolMessage):
+                response += f'\n[used tool "{msg.name}"]\n'
+            yield response
+    else:
+        response = agent.invoke(
+            {"messages": [{"role": "user", "content": message}]},
+            llm_options['config'],
+            stream_mode="values",
+        )
+        response = response["messages"][-1].content
 
-    return response["messages"][-1].content
+    return response
 
 # --- USER DATA & AUTHENTICATION ---
 # Add these functions for user state management
@@ -245,6 +268,7 @@ def reset_to_defaults(*args):
         'use_plan_tool': 1,
         'use_search_tool': 1,
         'use_learningmaterial_tool': 1,
+        'use_milestones_tool':1,
         'temperature': 0.3
     }
     return [
@@ -252,7 +276,8 @@ def reset_to_defaults(*args):
         llm_options['temperature'],
         llm_options['use_plan_tool'],
         llm_options['use_search_tool'],
-        llm_options['use_learningmaterial_tool']
+        llm_options['use_learningmaterial_tool'],
+        llm_options['use_milestones_tool']
     ]
 
 # --- USER INTERFACE HELPERS ---
@@ -294,13 +319,14 @@ def get_current_date_message():
 
 # --- SETTINGS PANEL FUNCTIONS ---
 def apply_and_close(system_prompt, temperature, learning_plans_checkbox,
-                    internet_search_checkbox, learning_material_checkbox):
+                    internet_search_checkbox,learning_material_checkbox,milestones_checkbox):
     """Apply settings and close the panel"""
     global llm_options
 
     llm_options['system_prompt'] = system_prompt.strip()
     llm_options['use_plan_tool'] = int(learning_plans_checkbox)
     llm_options['use_search_tool'] = int(internet_search_checkbox)
+    llm_options['use_milestones_tool'] = int(milestones_checkbox)
     llm_options['use_learningmaterial_tool'] = int(learning_material_checkbox)
     llm_options['temperature'] = max(0, min(1.0, float(temperature)))
 
@@ -341,7 +367,8 @@ def update_options_panel():
         str(llm_options['temperature']),
         llm_options['use_plan_tool'] > 0,
         llm_options['use_search_tool'] > 0,
-        llm_options['use_learningmaterial_tool'] > 0
+        llm_options['use_learningmaterial_tool'] > 0,
+        llm_options['use_milestones_tool'] > 0
     )
 
 # --- PHASE SWITCHING ---
@@ -587,11 +614,12 @@ def create_chatbot_interface():
                     temperature = gr.Textbox(label="temperature", value="0.7")
 
                 # LLM Tools selection
+                gr.Markdown("**TOOLS that LLM can access**")
                 with gr.Row():
-                    gr.Markdown("**LLM tools:**")
-                    learning_plans_checkbox = gr.Checkbox(label="Learning Plans")
-                    internet_search_checkbox = gr.Checkbox(label="Internet Search")
+                    learning_plans_checkbox = gr.Checkbox(label="Learning plan")
+                    internet_search_checkbox = gr.Checkbox(label="Internet search")
                     learning_material_checkbox = gr.Checkbox(label="Learning materials")
+                    milestones_checkbox = gr.Checkbox(label="Milestones")
 
                 reset_settings_button = gr.Button("Reset settings to default")
 
@@ -609,7 +637,8 @@ def create_chatbot_interface():
                         temperature,
                         learning_plans_checkbox,
                         internet_search_checkbox,
-                        learning_material_checkbox
+                        learning_material_checkbox,
+                        milestones_checkbox
                     ]
                 )
 
@@ -621,7 +650,8 @@ def create_chatbot_interface():
                         temperature,
                         learning_plans_checkbox,
                         internet_search_checkbox,
-                        learning_material_checkbox
+                        learning_material_checkbox,
+                        milestones_checkbox
                     ]
                 )
                 apply_all_button.click(
@@ -631,7 +661,8 @@ def create_chatbot_interface():
                         temperature,
                         learning_plans_checkbox,
                         internet_search_checkbox,
-                        learning_material_checkbox
+                        learning_material_checkbox,
+                        milestones_checkbox
                     ],
                     outputs=settings_panel
                 )
