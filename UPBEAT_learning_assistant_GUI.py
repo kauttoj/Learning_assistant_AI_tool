@@ -225,18 +225,12 @@ def authenticate(username, password):
         user_data['learning_state'] = load_user_state(username)
 
         if user_data['learning_state'] is None:
-            user_data['learning_state']={}
-            user_data['learning_state'][1] = {
-                'labels':user_data['milestones_phase1'],
-                'states':[False]*len(user_data['milestones_phase1'])}
-            user_data['learning_state'][2] = {
-                'labels': user_data['milestones_phase2'],
-                'states': [False] * len(user_data['milestones_phase2'])
-            }
+            user_data['learning_state'] = {
+                'labels':user_data['milestones'],
+                'states':[False]*len(user_data['milestones'])}
             save_user_state(username,user_data['learning_state'])
         else:
-            assert len(user_data['learning_state'][1]['labels'])==len(user_data['milestones_phase1'])
-            assert len(user_data['learning_state'][2]['labels']) == len(user_data['milestones_phase2'])
+            assert len(user_data['learning_state']['labels'])==len(user_data['milestones'])
         reset_to_defaults()
         return True
 
@@ -325,7 +319,7 @@ def close_milestones_panel(*checkboxes):
     """Hide the milestones panel"""
 
     if user_data and "learning_state" in user_data:
-        user_data['learning_state'][current_selected_phase]['states'] = checkboxes
+        user_data['learning_state']['states'] = checkboxes
         save_user_state(user_data['username'],user_data['learning_state'])
     else:
         raise Exception("user_data has no learning_state attribute")
@@ -560,7 +554,7 @@ def create_chatbot_interface():
                     if user_data is None:
                         checkboxes = []
                     else:
-                        data = user_data['learning_state'][current_selected_phase]
+                        data = user_data['learning_state']
                         checkboxes = [gr.Checkbox(label=data['labels'][k], value=data['states'][k]) for k in
                                       range(len(data['labels']))]
 

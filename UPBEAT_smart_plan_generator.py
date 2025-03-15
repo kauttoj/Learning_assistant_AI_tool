@@ -60,11 +60,12 @@ ending_text = 'We are glad to have you onboard :) If you have any questions, ple
 PHASE1_PROMPT_TEMPLATE_BEGINNER = '''
 # ROLE #
 
-You are a teacher whose task is to evaluate the skill level of a student and help in creating a personalized Smart Learning Plan for the student. You are given relevant background information about the student, including current skills, interests, and goals. You need to take all these into account when crafting the learning plan.
+You are a teacher whose task is to evaluate the skill level of a student and help in creating a personalized Smart Learning Plan (SLP) for the student. You are given relevant background information about the student, including current skills, interests, and goals. You need to take all these into account when crafting the learning plan.
+Aim of SLP is for a student to PREPARE to the actual training phase given by the teacher, not to replace teacher training.
 
 # CONTEXT #
 
-The training session topics are divided into four core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
+The training session topics are divided into four core modules. Each module has objectives and some pre-defined assignments. This is shown below in JSON format:
 
 <core_modules>
 {core_modules_description}
@@ -134,7 +135,8 @@ The final output should be written entirely in Markdown, where smart learning pl
 Important:
 -Do NOT include timetable for the plan (don't include "Week 1" or "Day 1" or similar). Student studies in his/her own pace.
 -Student MUST learn about topic where he/she is at beginner level, you must include <mandatory_materials> into the plan.
--The study plan needs to be detailed, clear and adapted to the student current skill level.
+-The study plan needs to be simple and adapted to the student current skill level.
+-Remember that aim of this plan is for a student to PREPARE to the actual training of core modules provided by the teacher, not to replace teacher training! 
 
 Now, following all above instructions and plan structure, write the complete personalized Smart Learning Plan for the student. Remember to use MARKDOWN format and include the plan inside <Smart_Learning_Plan> tags.
 '''
@@ -206,6 +208,7 @@ Important:
 -Plan is targeted for learning at home in max 1 week, so do not include complex and long-term tasks/goals, such as "participate in networking events" or "enroll to local University"
 -Do NOT simply copy-paste list of topic as listed above, but adapt them into suitable learning goals for the student  
 -You MUST take into account skill levels and industry focus of the student.
+-Remember that aim of this plan is for a student to PREPARE to the actual training of core modules provided by the teacher, not to replace teacher. 
 
 Now, following all above instructions and given plan structure, write the complete personalized Smart Learning Plan for the student. 
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
@@ -320,12 +323,33 @@ Select 6 optimal materials that best suit the student’s needs. Return a Python
 Respond with a Python integer list in the format like "[1,2,3,4,5,6]".
 '''
 
-PROMPT_TEMPLATE_CHECKPOINT_EXTRACTOR = '''
-You are given a learning plan, so called Smart Learning Plan, which was made for a student. You task is to create a list of milestones based on this learning plan. Student will "tick" those milestones once completed as he/she follows the plan.
+PROMPT_TEMPLATE_MILESTONES = '''
+# ROLE #
+
+You are a teacher tasked with creating a set of learning milestones for a student to support his/her studies and entrepreneurship goals. 
+
+# CONTEXT #
+
+Aim is to teach the student about the following four (4) core modules given below in JSON format:
+
+<core_modules>
+{core_modules_description}
+</core_modules>
+
+These modules are general for all students without any personalization. 
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises.
+
+# STUDENT BACKGROUND INFORMATION #
+
+Student has provided the following information of him/herself, given inside <student_information> tags:
+
+<student_information>
+{student_information}
+</student_information>
 
 # SMART LEARNING PLAN #
 
-This is the personalized Smart Learning Plan given inside <Smart_Learning_Plan> tags:
+This is the personalized Smart Learning Plan of the student, given inside <Smart_Learning_Plan> tags:
 
 <Smart_Learning_Plan>
 {learning_plan}
@@ -333,21 +357,24 @@ This is the personalized Smart Learning Plan given inside <Smart_Learning_Plan> 
  
 # TASK #
 
-Based on the learning plan, create a list of milestones that student needs to finish in order to complete the Smart Learning Plan. These milestones must be extracted directly from the plan itself, containing all major tasks and steps written in the plan.
+Your task is to create a list of milestones based on training topics and the learning plan. Based on the Smart Learning Plan, create a list of milestones that student should accomplish during his/her training. These milestones must be related to core modules and the SLP.
+Each milestone is one logical and sequential step in the learning process. Milestones must be personalized for the student, supporting his/her particular aims and goals.
 
-Each milestone is one logical and sequential step in the learning process.
+# OUTPUT FORMAT #
 
-Always provide your list in the following format in side <milestones> tags with short descriptions inside parenthesis [...]:
+In you response, provide a list in the following format inside <milestones> tags with short descriptions inside parenthesis [...]:
 
 <milestones>
-<milestone1>1. [short description of the milestone]</milestone1>
-<milestone2>2. [short description of the milestone]</milestone2>
-<milestone3>3. [short description of the milestone]</milestone3>
+<milestone1>[short description of the milestone]</milestone1>
+<milestone2>[short description of the milestone]</milestone2>
 ...
-<milestoneN>N. [short description of the milestone]</milestoneN>
+<milestoneN>[short description of the milestone]</milestoneN>
 </milestones>
 
-The number N of milestones depends on the content in the learning plan and must be between 3-10. All milestones must be related to the learning plan. Milestones must be very clear and logical. Follow a good pedagogical process in creating milestones.
+Important:
+-The number N of milestones depends on the length and content in the learning plan and must be between 3-10. Never create more than 10 milestones!
+-All milestones must be related to the learning plan and personalized for the student
+-Milestones must be practical, clear and logical. Follow a good pedagogical process in creating milestones.
 '''
 
 PROMPT_TEMPLATE_ASSISTANT = '''
@@ -398,7 +425,7 @@ def read_text_file(filepath):
         with open(filepath, 'r', encoding='utf-8') as f:
             return f.read()
     except Exception as e:
-        log_print(f"Error reading file {filepath}: {str(e)}")
+        print(f"Error reading file {filepath}: {str(e)}")
         raise
 
 def create_modern_happy_smiley():
@@ -600,8 +627,17 @@ class SmartPlanGenerator:
     def remove_border_parentheses(self,text):
         return re.sub(r'^[\[\(\{](.*?)[\]\)\}]$', r'\1', text)
 
-    def generate_milestones(self,plan):
-        prompt = PROMPT_TEMPLATE_CHECKPOINT_EXTRACTOR.replace('{learning_plan}',plan)
+    def generate_milestones(self,plan,student_data,core_modules_data):
+
+        valid_rows = [k for k in student_data.index if
+                      any(x in k for x in ['Q1.','Q8.','Q9.','Q10.','Q15.','Q16.','Q17.','Q18.','Additional Information'])]
+        student_information_prompt = ""
+        for key, value in student_data.items():
+            if key in valid_rows:
+                student_information_prompt += f"{key}: {value}\n"
+        prompt = PROMPT_TEMPLATE_MILESTONES.replace('{learning_plan}',plan)
+        prompt = prompt.replace('{student_information}', student_information_prompt)
+        prompt = prompt.replace('{core_modules_description}', core_modules_data)
         milestones_raw = get_llm_response(prompt, self.llm_config_large)
         milestones = [self.remove_border_parentheses(x).strip() for x in re.findall(r'<milestone\d+>\s*(.*?)\s*</milestone\d+>', milestones_raw)]
         return milestones_raw,milestones
@@ -698,11 +734,11 @@ def main():
         phase2_result = plan_generator.generate_phase_plan(student_data, phase=2)
         pdf_content_phase2 = markdown_to_pdf(phase2_result['smart_plan'])
 
-        milestones1_raw, milestones1 = plan_generator.generate_milestones(updated_plan_phase1)
-        milestones2_raw, milestones2 = plan_generator.generate_milestones(phase2_result['smart_plan'])
+        milestones_raw, milestones = plan_generator.generate_milestones(phase2_result['smart_plan'],student_data,core_modules_data)
 
         # Generate assistant prompt for chatbot usage
         assistant_prompt = PROMPT_TEMPLATE_ASSISTANT.replace('{student_information}', phase1_result['student_info'])
+        assistant_prompt = assistant_prompt.replace('{core_modules_description}', core_modules_data)
         # Generate a unique password for the student
         student_id = phase1_result['student_id']
         password = generate_unique_custom_id(existing_ids, length=15)
@@ -711,8 +747,7 @@ def main():
         study_plans[student_id] = {
             'plan_prompt_phase1': phase1_result['plan_prompt'],
             'smart_plan_phase1': updated_plan_phase1,
-            'milestones_phase1': milestones1,
-            'milestones_phase2': milestones2,
+            'milestones': milestones,
             'smart_plan_pdf_phase1': pdf_content_phase1,
             'plan_prompt_phase2': phase2_result['plan_prompt'],
             'smart_plan_phase2': phase2_result['smart_plan'],
@@ -736,6 +771,7 @@ def main():
             'plan_prompt_phase2': details['plan_prompt_phase2'],
             'smart_plan_phase2': details['smart_plan_phase2'],
             'assistant_prompt': details['assistant_prompt'],
+            'milestones': details['milestones'],
             'password': details['password']
         })
         save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase1.pdf', study_plans[sid]['smart_plan_pdf_phase1'])
