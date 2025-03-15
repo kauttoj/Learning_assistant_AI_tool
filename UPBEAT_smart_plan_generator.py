@@ -129,14 +129,12 @@ Below is your personalized plan to build the foundational skills you currently r
 # INSTRUCTIONS #
 
 Output structure:
--The final output should be written entirely in Markdown, where smart learning plan is contained in <Smart_Learning_Plan> tags and planning steps included in <planning> tags. 
--When writing section 'Your study plan', provide very clear structure and STEPS for student to follow
+The final output should be written entirely in Markdown, where smart learning plan is contained in <Smart_Learning_Plan> tags and planning steps included in <planning> tags. You can only write parts marked inside parenthesis [...], otherwise keep format same.
 
 Important:
 -Do NOT include timetable for the plan (don't include "Week 1" or "Day 1" or similar). Student studies in his/her own pace.
--The study plan needs to be detailed and comprehensive, and adapted to the student current skill level.
--Plan must be comprehensive and detailed that student can easily follow.
 -Student MUST learn about topic where he/she is at beginner level, you must include <mandatory_materials> into the plan.
+-The study plan needs to be detailed, clear and adapted to the student current skill level.
 
 Now, following all above instructions and plan structure, write the complete personalized Smart Learning Plan for the student. Remember to use MARKDOWN format and include the plan inside <Smart_Learning_Plan> tags.
 '''
@@ -201,16 +199,13 @@ Based on your survey responses, you already have a at least basic understanding 
 
 Analyze the student’s provided background information (Q1–Q18) to understand his/her skills, industry focus, interests and goals. Consider how the training topic can support the student to reach his/her short and long-term goals.
 
-Final Output Structure: The final output should be written entirely in MARKDOWN, contained within <Smart_Learning_Plan> section with all planning steps explained in <planning> section. 
-When writing SLP, use clear structure and bullet-points.
+Final Output Structure: The final output should be written entirely in MARKDOWN, contained within <Smart_Learning_Plan> section with all planning steps explained in <planning> section. You can only write parts marked inside parenthesis [...], otherwise keep format same.
 
 Important:
--Use the provided format of the output where you complete the parts pointed by parenthesis [...]
 -Do NOT include timetable for the plan (don't include "Week 1" or "Day 1" or similar). Student studies in his/her own pace.
--Plan is targeted for learning at home in max 2 weeks, so do not include complex and long-term tasks/goals, such as "participate in networking events" or "enroll to local University"
+-Plan is targeted for learning at home in max 1 week, so do not include complex and long-term tasks/goals, such as "participate in networking events" or "enroll to local University"
 -Do NOT simply copy-paste list of topic as listed above, but adapt them into suitable learning goals for the student  
--Think which aspect of our training plan are relevant for this particular student taken into account his preferences and aims
--You MUST take into account the overall skill level of the student when designing your plan
+-You MUST take into account skill levels and industry focus of the student.
 
 Now, following all above instructions and given plan structure, write the complete personalized Smart Learning Plan for the student. 
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
@@ -319,9 +314,10 @@ Below is a list of {learning_materials_count} items:
 
 ** INSTRUCTIONS **
 
-Select 6 optimal materials (as a list of numbers) that best suit the student’s needs.
+Select 6 optimal materials that best suit the student’s needs. Return a Python list of numbers. 
+
 ** OUTPUT FORMAT **
-Respond with an integer list in the format like "[1,2,3,4,5,6]".
+Respond with a Python integer list in the format like "[1,2,3,4,5,6]".
 '''
 
 PROMPT_TEMPLATE_CHECKPOINT_EXTRACTOR = '''
@@ -337,9 +333,8 @@ This is the personalized Smart Learning Plan given inside <Smart_Learning_Plan> 
  
 # TASK #
 
-Based on the learning plan, create a list of milestones that student needs to finish in order to complete the Smart Learning Plan. 
-These milestones must be extracted directly from the plan itself, containing all major tasks and steps written in the plan.
-Idea is that the student will tick these items as he/she proceeds with the plan, eventually ticking all milestones once the plan is completed. 
+Based on the learning plan, create a list of milestones that student needs to finish in order to complete the Smart Learning Plan. These milestones must be extracted directly from the plan itself, containing all major tasks and steps written in the plan.
+
 Each milestone is one logical and sequential step in the learning process.
 
 Always provide your list in the following format in side <milestones> tags with short descriptions inside parenthesis [...]:
@@ -352,7 +347,7 @@ Always provide your list in the following format in side <milestones> tags with 
 <milestoneN>N. [short description of the milestone]</milestoneN>
 </milestones>
 
-The number N of milestones depends on the content in the learning plan, but should be between 3-10. All milestones must be always related to the learning plan. Milestones must be very clear and logical. Follow a good pedagogical process in creating milestones.
+The number N of milestones depends on the content in the learning plan and must be between 3-10. All milestones must be related to the learning plan. Milestones must be very clear and logical. Follow a good pedagogical process in creating milestones.
 '''
 
 PROMPT_TEMPLATE_ASSISTANT = '''
