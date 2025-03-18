@@ -16,12 +16,12 @@ from dotenv import load_dotenv
 # -adding more model options
 
 # --- CONFIGURATION ---
-IS_DEBUG = 2
+IS_DEBUG = 0
 STUDY_PLANS_FILE = r'learning_plans/study_plans_data.pickle'
 CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
 LLM_MODEL="gpt-4o"
-TRAINING_PERIOD_START = datetime(2025, month=4, day=1, hour=6)
-TRAINING_PERIOD_END = datetime(2025, month=4, day=21, hour=23)
+TRAINING_PERIOD_START = datetime(2025, month=3, day=1, hour=6)
+TRAINING_PERIOD_END = datetime(2025, month=3, day=30, hour=23)
 ENABLE_STREAM=1
 
 # --- ENVIRONMENT SETUP ---
@@ -677,14 +677,10 @@ def main():
     demo = create_chatbot_interface()
 
     # Launch the app with appropriate settings
-    if IS_DEBUG==1:
+    if IS_DEBUG>0:
         IDs = list(user_datasets.keys())
-        ind = 1
-        authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
-        demo.launch(share=False, allowed_paths=["logo.png"])
-    elif IS_DEBUG==2:
-        IDs = list(user_datasets.keys())
-        ind = 3
+        ind = IS_DEBUG
+        print(f'!! DEBUG MODE ({IS_DEBUG}): Auto-login as {IDs[ind]} !!')
         authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
         demo.launch(share=False, allowed_paths=["logo.png"])
     else:

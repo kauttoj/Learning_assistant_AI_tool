@@ -3,3 +3,6 @@
 .env
 /temp
 /temp
+app.py
+/templates
+/.gradio
