@@ -16,12 +16,17 @@ from dotenv import load_dotenv
 # -adding more model options
 
 # --- CONFIGURATION ---
-IS_DEBUG = 0
+IS_DEBUG = 1
+ENABLE_CHAT = 0
 STUDY_PLANS_FILE = r'learning_plans/study_plans_data.pickle'
 CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
 LLM_MODEL="gpt-4o"
-TRAINING_PERIOD_START = datetime(2025, month=3, day=1, hour=6)
-TRAINING_PERIOD_END = datetime(2025, month=3, day=30, hour=23)
+TRAINING_PERIODS = {
+    1: (datetime(2025, month=2, day=1, hour=6),datetime(2025, month=2, day=2, hour=6)),
+    2: (datetime(2025, month=2, day=2, hour=6),datetime(2025, month=2, day=3, hour=6)),
+    3: (datetime(2025, month=2, day=3, hour=6),datetime(2025, month=2, day=4, hour=6)),
+    4: (datetime(2025, month=2, day=4, hour=6),datetime(2025, month=2, day=5, hour=6)),
+}
 ENABLE_STREAM=1
 
 # --- ENVIRONMENT SETUP ---
@@ -30,20 +35,23 @@ def setup_environment():
     load_dotenv('.env')
 
     # Set environment variables from .env file
-    os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
+    #os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
     os.environ["TAVILY_API_KEY"] = os.getenv('TAVILY_API_KEY')
 
     # Determine current phase
     current_time = datetime.now()
     if IS_DEBUG==1:
-        return 2  # Force phase 2 in debug mode
-    elif current_time < TRAINING_PERIOD_START:
-        return 1
-    elif current_time < TRAINING_PERIOD_END:
-        return 2
+        return 5  # Force phase 2 in debug mode
     else:
-        return 3
+        for k,dates in TRAINING_PERIODS.items():
+            if k==1 and (current_time<dates[0]):
+                return 1
+            elif k==4 and (current_time>dates[1]):
+                return 4
+            elif dates[0]<=current_time<dates[1]:
+                return k
+        raise Exception("BUG!")
 
 # --- GLOBAL STATE ---
 # Initialize global state
@@ -61,7 +69,7 @@ llm_options = {}
 print('setting environment...',end='')
 current_phase = setup_environment()
 print(' done')
-current_selected_phase = current_phase
+current_selected_phase = min(4,current_phase)
 checkbox_elems = []
 
 # --- TOOLS ---
@@ -82,6 +90,18 @@ def phase2_plan_tool():
     """Contains the personalized smart learning plan created for the student"""
     print('Obtaining smart_plan_phase2')
     return user_data['smart_plan_phase2']
+
+@tool
+def phase3_plan_tool():
+    """Contains the personalized smart learning plan created for the student"""
+    print('Obtaining smart_plan_phase3')
+    return user_data['smart_plan_phase3']
+
+@tool
+def phase4_plan_tool():
+    """Contains the personalized smart learning plan created for the student"""
+    print('Obtaining smart_plan_phase4')
+    return user_data['smart_plan_phase4']
 
 @tool
 def milestones_tool():
@@ -114,39 +134,42 @@ def update_agents():
     """Update the LLM agents based on current options"""
     global llm_options
 
-    llm_options['config'] = {"configurable": {"thread_id": "1"}}
-    llm_options['memory'] = MemorySaver()
+    if ENABLE_CHAT:
 
-    # Create tool lists based on settings
-    phase1_tools = []
-    phase2_tools = []
+        llm_options['config'] = {"configurable": {"thread_id": "1"}}
+        llm_options['memory'] = MemorySaver()
 
-    print('updating agents...',end='')
-    if llm_options['use_search_tool']:
-        print(' adding search tool ',end=' ')
-        search_tool = initialize_search_tool()
-        phase1_tools.append(search_tool)
-        phase2_tools.append(search_tool)
+        # Create tool lists based on settings
+        common_tools=[]
+        tools = {k:[] for k in range(1,5)}
 
-    if llm_options['use_plan_tool']:
-        print(' adding plan tool ', end=' ')
-        phase1_tools.append(phase1_plan_tool)
-        phase2_tools.append(phase2_plan_tool)
+        print('updating agents...',end='')
+        if llm_options['use_search_tool']:
+            print(' adding search tool ',end=' ')
+            common_tools.append(initialize_search_tool())
 
-    if llm_options['use_learningmaterial_tool']:
-        print(' adding learning materials tool ', end=' ')
-        phase1_tools.append(additional_materials_tool)
-        phase2_tools.append(additional_materials_tool)
+        if llm_options['use_learningmaterial_tool']:
+            print(' adding learning materials tool ', end=' ')
+            common_tools.append(additional_materials_tool)
 
-    if llm_options['use_milestones_tool']:
-        print(' adding milestones tool ', end=' ')
-        phase1_tools.append(milestones_tool)
-        phase2_tools.append(milestones_tool)
+        if llm_options['use_milestones_tool']:
+            print(' adding milestones tool ', end=' ')
+            common_tools.append(milestones_tool)
 
-    # Create agents with appropriate tools
-    llm_options['agent_phase1'] = create_agent(phase1_tools)
-    llm_options['agent_phase2'] = create_agent(phase2_tools)
-    print(' ...done')
+        if llm_options['use_plan_tool']:
+            print(' adding plan tool ', end=' ')
+            tools[1].append(phase1_plan_tool)
+            tools[2].append(phase2_plan_tool)
+            tools[3].append(phase3_plan_tool)
+            tools[4].append(phase4_plan_tool)
+
+        # Create agents with appropriate tools
+        llm_options['agent_phase1'] = create_agent(common_tools + tools[1])
+        llm_options['agent_phase2'] = create_agent(common_tools + tools[2])
+        llm_options['agent_phase3'] = create_agent(common_tools + tools[3])
+        llm_options['agent_phase4'] = create_agent(common_tools + tools[4])
+
+        print(' ...done')
 
 def predict(message, history):
     """Handle message prediction using the appropriate agent"""
@@ -154,14 +177,13 @@ def predict(message, history):
 
     if len(history) == 0:
         if session_counter>0:
-            agent = llm_options['agent_phase1'] if current_phase == 1 else llm_options['agent_phase2']
-            snapshot = agent.get_state(llm_options['config'])
+            snapshot = llm_options[f'agent_phase{current_selected_phase}'].get_state(llm_options['config'])
             session_snapshots.append(snapshot)
-        update_agents()
+            update_agents() # to reset history
         session_counter+=1
 
     # Determine which agent to use based on current phase
-    agent = llm_options['agent_phase1'] if current_phase == 1 else llm_options['agent_phase2']
+    agent = llm_options[f'agent_phase{current_selected_phase}']
 
     # Invoke the agent
     if ENABLE_STREAM:
@@ -281,37 +303,33 @@ def reset_to_defaults(*args):
 # --- USER INTERFACE HELPERS ---
 def save_pdf_file():
     """Save the current phase's PDF file to a temporary location"""
-    file_name = "UPBEAT_onboarding_plan.pdf" if current_selected_phase == 1 else "UPBEAT_training_plan.pdf"
+    file_name = f"UPBEAT_learning_plan_phase{current_selected_phase}"
     file_path = os.path.join(tempfile.gettempdir(), file_name)
 
-    pdf_data_key = 'smart_plan_pdf_phase1' if current_selected_phase == 1 else 'smart_plan_pdf_phase2'
+    pdf_data_key =  f"smart_plan_pdf_phase{current_selected_phase}"
 
+    print(f'writing PDF file {file_path}...',end='')
     with open(file_path, 'wb') as pdf_file:
         pdf_file.write(user_data[pdf_data_key])
+    print(' done')
 
     return file_path
 
 def load_user_data(*args):
     """Load user greeting message based on selected phase"""
     user_name = user_data['data']['Q1. Full Name']
-
-    if current_selected_phase == 1:
-        return f"Hello **{user_name}**! Below is you personalized UPBEAT learning plan for onboarding phase."
-    else:
-        return f"Hello **{user_name}**! Below is you personalized UPBEAT learning plan for training phase. You can go back to onboarding phase plan if you need to."
+    return f"Hello **{user_name}**! Below is you personalized UPBEAT learning plan for the selected phase."
 
 def load_smart_plan(*args):
     """Load the appropriate smart plan based on selected phase"""
-    return user_data['smart_plan_phase1'] if current_selected_phase == 1 else user_data['smart_plan_phase2']
+    return user_data[f'smart_plan_phase{current_selected_phase}']
 
 def get_current_date_message():
     """Generate a message with the current date and phase information"""
     current_date = datetime.now().strftime("%d.%m.%Y")
 
-    if current_phase == 1:
-        return f"**{current_date}<br>We're in onboarding phase.**"
-    elif current_phase == 2:
-        return f"**{current_date}<br>We're in training phase.**"
+    if current_phase < 5:
+        return f"**{current_date}<br>We're in phase {current_phase}.**"
     else:
         return f"**{current_date}<br>We're in past-training phase.**"
 
@@ -377,17 +395,45 @@ def switch_to_onboarding():
     return (
         gr.update(elem_classes=["phase-button", "green-button"]),
         gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button", "gray-button"]),
         user_data['smart_plan_phase1'],
     )
 
-def switch_to_training():
+def switch_to_phase2():
     """Switch to training phase"""
     global current_selected_phase
     current_selected_phase = 2
     return (
         gr.update(elem_classes=["phase-button", "gray-button"]),
         gr.update(elem_classes=["phase-button", "green-button"]),
+        gr.update(elem_classes=["phase-button",  "gray-button"]),
+        gr.update(elem_classes=["phase-button",  "gray-button"]),
         user_data['smart_plan_phase2'],
+    )
+
+def switch_to_phase3():
+    """Switch to training phase"""
+    global current_selected_phase
+    current_selected_phase = 3
+    return (
+        gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button",  "green-button"]),
+        gr.update(elem_classes=["phase-button",  "gray-button"]),
+        user_data['smart_plan_phase3'],
+    )
+
+def switch_to_phase4():
+    """Switch to training phase"""
+    global current_selected_phase
+    current_selected_phase = 4
+    return (
+        gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button", "gray-button"]),
+        gr.update(elem_classes=["phase-button",  "gray-button"]),
+        gr.update(elem_classes=["phase-button",  "green-button"]),
+        user_data['smart_plan_phase4'],
     )
 
 def toggle_visibility(visible):
@@ -492,14 +538,24 @@ def create_chatbot_interface():
 
                 # Determine initial button states
                 onboarding_initial = "green-button" if current_phase == 1 else "gray-button"
-                training_initial = "green-button" if current_phase == 2 else "gray-button"
+                phase2_initial = "green-button" if current_phase == 2 else "gray-button"
+                phase3_initial = "green-button" if current_phase == 3 else "gray-button"
+                phase4_initial = "green-button" if current_phase >= 4 else "gray-button"
 
-                options_button = gr.Button("Options")
+                if ENABLE_CHAT:
+                    options_button = gr.Button("Options")
+
                 onboarding_btn = gr.Button("Onboarding", interactive=True,
                                            elem_classes=["phase-button", onboarding_initial])
-                training_btn = gr.Button("Training",
-                                         elem_classes=["phase-button", training_initial],
+                training1_btn = gr.Button("Phase 2",
+                                         elem_classes=["phase-button", phase2_initial],
                                          interactive=(current_phase > 1))
+                training2_btn = gr.Button("Phase 3",
+                                         elem_classes=["phase-button", phase3_initial],
+                                         interactive=(current_phase > 2))
+                training3_btn = gr.Button("Phase 4",
+                                         elem_classes=["phase-button", phase4_initial],
+                                         interactive=(current_phase > 3))
 
                 # Training phase message
                 training_message = gr.Markdown(get_current_date_message())
@@ -515,21 +571,33 @@ def create_chatbot_interface():
                     download_btn = gr.Button("Save plan as PDF", elem_classes="plan-button")
                     download_btn_hidden = gr.DownloadButton(visible=False, elem_id="download_btn_hidden")
 
-                smart_plan_markdown = gr.Markdown(visible=False)
+                smart_plan_markdown = gr.Markdown(visible=True)
 
                 # Button click actions
                 onboarding_btn.click(
                     switch_to_onboarding,
                     inputs=None,
-                    outputs=[onboarding_btn, training_btn, smart_plan_markdown]
+                    outputs=[onboarding_btn, training1_btn,training2_btn,training3_btn,smart_plan_markdown]
                 )
-                training_btn.click(
-                    switch_to_training,
+                training1_btn.click(
+                    switch_to_phase2,
                     inputs=None,
-                    outputs=[onboarding_btn, training_btn, smart_plan_markdown]
+                    outputs=[onboarding_btn, training1_btn,training2_btn,training3_btn,smart_plan_markdown]
                 )
 
-                visibility_state = gr.State(value=False)
+                training2_btn.click(
+                    switch_to_phase3,
+                    inputs=None,
+                    outputs=[onboarding_btn, training1_btn,training2_btn,training3_btn,smart_plan_markdown]
+                )
+
+                training3_btn.click(
+                    switch_to_phase4,
+                    inputs=None,
+                    outputs=[onboarding_btn, training1_btn,training2_btn,training3_btn,smart_plan_markdown]
+                )
+
+                visibility_state = gr.State(value=True)
 
                 toggle_button.click(
                     toggle_visibility,
@@ -546,22 +614,25 @@ def create_chatbot_interface():
                     js="() => document.querySelector('#download_btn_hidden').click()"
                 )
 
-                gr.Markdown(
-                    "Chatbot below can assist you with your studies. You can discuss about your learning plan or search information.")
+                if ENABLE_CHAT:
+                    gr.Markdown(
+                        "Chatbot below can assist you with your studies. You can discuss about your learning plan or search information.")
 
-                chat = gr.ChatInterface(
-                    predict,
-                    type="messages",
-                    title="Learning Assistant Bot",
-                    examples=[
-                        "Hi! Who are you and what can you do for me?",
-                        "Help me in getting started with my learning",
-                        "What are my top learning priorities?",
-                        "What are essential skills I need to learn during onboarding?"
-                    ],
-                    save_history=True,
-                    run_examples_on_click=True
-                )
+                    chat = gr.ChatInterface(
+                        predict,
+                        type="messages",
+                        title="Learning Assistant Bot",
+                        examples=[
+                            "Hi! Who are you and what can you do for me?",
+                            "Help me in getting started with my learning!",
+                            "What are my top learning priorities?",
+                            "Give me a summary what you know about me and my priorities.",
+                            "What are essential skills I need to concentrate in?",
+                            "What tools you have available?"
+                        ],
+                        save_history=True,
+                        run_examples_on_click=True
+                    )
 
                 app.load(load_user_data, inputs=None, outputs=[greeting_textbox])
                 app.load(load_smart_plan, inputs=None, outputs=[smart_plan_markdown])
@@ -626,45 +697,46 @@ def create_chatbot_interface():
                     apply_all_button = gr.Button("Apply all & close")
                     close_no_changes_button = gr.Button("Close without changes")
 
-                # Button actions
-                options_button.click(
-                    toggle_settings_panel,
-                    outputs=[
-                        settings_panel,
-                        system_prompt,
-                        temperature,
-                        learning_plans_checkbox,
-                        internet_search_checkbox,
-                        learning_material_checkbox,
-                        milestones_checkbox
-                    ]
-                )
+                if ENABLE_CHAT:
+                    # Button actions
+                    options_button.click(
+                        toggle_settings_panel,
+                        outputs=[
+                            settings_panel,
+                            system_prompt,
+                            temperature,
+                            learning_plans_checkbox,
+                            internet_search_checkbox,
+                            learning_material_checkbox,
+                            milestones_checkbox
+                        ]
+                    )
 
-                reset_settings_button.click(
-                    reset_to_defaults,
-                    inputs=None,
-                    outputs=[
-                        system_prompt,
-                        temperature,
-                        learning_plans_checkbox,
-                        internet_search_checkbox,
-                        learning_material_checkbox,
-                        milestones_checkbox
-                    ]
-                )
-                apply_all_button.click(
-                    apply_and_close,
-                    inputs=[
-                        system_prompt,
-                        temperature,
-                        learning_plans_checkbox,
-                        internet_search_checkbox,
-                        learning_material_checkbox,
-                        milestones_checkbox
-                    ],
-                    outputs=settings_panel
-                )
-                close_no_changes_button.click(close_no_changes, outputs=settings_panel)
+                    reset_settings_button.click(
+                        reset_to_defaults,
+                        inputs=None,
+                        outputs=[
+                            system_prompt,
+                            temperature,
+                            learning_plans_checkbox,
+                            internet_search_checkbox,
+                            learning_material_checkbox,
+                            milestones_checkbox
+                        ]
+                    )
+                    apply_all_button.click(
+                        apply_and_close,
+                        inputs=[
+                            system_prompt,
+                            temperature,
+                            learning_plans_checkbox,
+                            internet_search_checkbox,
+                            learning_material_checkbox,
+                            milestones_checkbox
+                        ],
+                        outputs=settings_panel
+                    )
+                    close_no_changes_button.click(close_no_changes, outputs=settings_panel)
 
         app.load(lambda x: x, inputs=[rerender_trigger], outputs=[rerender_trigger])
 
@@ -682,8 +754,10 @@ def main():
         ind = IS_DEBUG
         print(f'!! DEBUG MODE ({IS_DEBUG}): Auto-login as {IDs[ind]} !!')
         authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
+        update_agents()
         demo.launch(share=False, allowed_paths=["logo.png"])
     else:
+        update_agents()
         demo.launch(auth=authenticate, share=False, allowed_paths=["logo.png"])
 
 if __name__ == "__main__":
