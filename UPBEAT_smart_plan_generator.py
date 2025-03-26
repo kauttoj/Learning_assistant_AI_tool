@@ -26,18 +26,19 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 # -----------------------------
 # LLM Configurations
 # -----------------------------
-LOCAL_MODEL = 0
+LOCAL_MODEL = 1
 if LOCAL_MODEL:
     client = OpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
+    MODEL_STR = 'deepthinkers-phi4' # "mradermacher/DeepThinkers-Phi4-GGUF"
     llm_config_large = {
-        "model": "mradermacher/DeepThinkers-Phi4-GGUF",
-        "max_tokens": 9000,
+        "model": MODEL_STR,
+        "max_tokens": 10000,
         "temperature": 0.1,
     }
     llm_config_small = {
-        "model": "mradermacher/DeepThinkers-Phi4-GGUF",
-        "temperature": 0.0,
-        "max_tokens": 9000,
+        "model": MODEL_STR,
+        "temperature": 0.1,
+        "max_tokens": 10000,
     }
 else:
     llm_config_large = {
@@ -214,80 +215,73 @@ Now, following all above instructions and given plan structure, write the comple
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
 '''
 
-PROMPT_TEMPLATE_PHASE2 = '''
-# ROLE #
+PROMPT_TEMPLATE_PHASE2_4 = ''' 
+# ROLE # 
 
-You are a teacher tasked with creating a personalized Smart Learning Plan (SLP) for a student to support his/her learning and entrepreneurship. 
+You are a teacher tasked with creating a personalized Smart Learning Plan (SLP) for a young adult student to support his/her learning and entrepreneurship.
 
-# CONTEXT #
+# CONTEXT # 
 
-The training session topics are divided into four (4) core modules. Each module has objectives and some pre-defined assingments. This is shown below in JSON format:
+The training session topics are divided into four (4) core modules. Each module has general (non-personalised) objectives and assignments. This is shown below in JSON format: 
 
-<core_modules>
-{core_modules_description}
-</core_modules>
+<core_modules> 
+{core_modules_description} 
+</core_modules> 
 
-These modules are general for all students without any personalization. 
-Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises.
+These modules are general for all students without any personalization.  
+Overall, we want to develop an entrepreneurial mindset via an integrated learning approach, which includes practical elements such as learning logs, projects, case studies, brainstorming, prototyping, testing, personal reflections, self-directed assignments, and ideation exercises. 
 
-# STUDENT #
+# STUDENT # 
 
-The student provided the following background information (Q1-Q18):
+The student provided the following background information is him/herself: 
 
-<student_data>
-{student_information}
-</student_data>
+<student_data> 
+{student_information} 
+</student_data> 
 
-# TASK #
+# TASK # 
 
-We want to provide the student a personalized Smart Learning Plan to support general teaching. You myst create a personalized Smart Learning Plan for the student to support him/her during the training phase. Your answer must be in Markdown format with the following structure where you must write parts inside parenthesis [...].
+We want to provide the student a personalized Smart Learning Plan to support general teaching. You must create a personalized Smart Learning Plan for the student to support him/her during the training phase. Your answer must be in Markdown format with the following structure where you must write parts inside parenthesis [...]. 
 
----------------
-<internal_planning>
-[your detailed internal thinking and planning how to write the Smart Learning Plan]
-</internal_planning>
+--------------- 
+<internal_planning> 
+[your detailed internal thinking and planning how to write the Smart Learning Plan] 
+</internal_planning> 
 
-<Smart_Learning_Plan>
-# Smart learning plan (training)
+<Smart_Learning_Plan> 
+# Smart learning plan (training) 
 
-Dear [insert student name here]
+Dear [insert student name here] 
 
-This plan is designed to support your learning during the training period.
+These recommendations are designed to support your preparation for module {module_number}. 
 
-## 1. Learning objectives*
+## Learning objectives* 
 
-[For each of the 4 training modules, define a clear personalized learning objectives for the student. These objectives must have a clear industry focus that aligns with student background, industry and aims.]
+[For module {module_number}, define a clear personalized learning objectives for the student. These objectives must have a clear industry focus that aligns with student background, industry and aims. These objectives should be aligned with the general (non-personalised) objective defined for module {module_number}, but add extra details for each student] 
 
-## 2. Your tailored learning plan
+## Assignments 
 
-[For each of the 4 learning objectives, develop a clear, step-by-step plan how to reach those objectives.]
+[For each learning objective, develop a personalized small and fun assignment to test their skills with industry focus (total 4 assignments for one module). Each assignment needs students to apply generative AI to solve a problem and explain the process with tools and prompts they used. These assignments should be aligned with the general (non-personalised) assignments defined for module {module_number}, but add extra details for each student] 
 
-## 3. Extra Assignments
+We hope these recommendations will help you prepare to module {module_number}.  If you have any questions, please contact teachers. 
+</Smart_Learning_Plan> 
+--------------- 
 
-[For each of the 4 learning objectives, develop a personalized small and fun assignment to test their skills with industry focus (total 4 assignments). Each assignment needs students to apply generative AI to solve a problem and explain the process with tools and prompts they used.]
+# INSTRUCTIONS # 
 
-## 4. Tips
+Analyze the student’s provided background information to understand his/her skills, industry focus, interests and goals. Consider how the training topic of module {module_number} can support the student to reach his/her short and long-term goals. 
 
-[Give 3-6 personalized tips and encouragement for the student how to study, develop and reach his/her aims and dreams.]
+Final Output Structure: The final output must be written entirely in MARKDOWN, contained within <Smart_Learning_Plan> section with all planning steps explained in <planning> section.  
+When writing SLP, use clear structure and bullet-points. 
 
-We hope you have a fruitful learning period. If you have any questions, please contact teachers.
-</Smart_Learning_Plan>
----------------
+Important: 
+-Use the provided format of the output where you ONLY complete the parts pointed by parenthesis [...]
+-This plan is targeted to support topics of MODULE {module_number} described in <core_modules>  
+-Do NOT include detailed timetable (e.g., specific dates) for the plan. Student studies in his/her own pace. 
+-DO NOT simply copy-paste of core topics or assignments, the plan must be adapted for the student 
+-Think which topics are most relevant for this particular student taken into account his preferences and business aims
 
-# INSTRUCTIONS #
-
-Analyze the student’s provided background information (Q1–Q18) to understand his/her skills, industry focus, interests and goals. Consider how the training topic can support the student to reach his/her short and long-term goals.
-
-Final Output Structure: The final output should be written entirely in MARKDOWN, contained within <Smart_Learning_Plan> section with all planning steps explained in <planning> section. 
-When writing SLP, use clear structure and bullet-points.
-
-Important:
--Use the provided format of the output where you complete the parts pointed by parenthesis [...]
--Do NOT include detailed timetable (e.g., specific dates) for the plan. Student studies in his/her own pace.
--DO NOT simply copy-paste of core topics or assignments, the plan must be adapted for the student
--Think which topics are most relevant for this particular student taken into account his preferences and aims
-
-Now, following all above instructions and given plan structure, write the complete personalized, short to long-term Smart Learning Plan for the student. 
+Now, following all above instructions and given plan structure, write the complete personalized, short to long-term Smart Learning Plan for the student.  
 Remember to use Markdown format and include the plan inside <Smart_Learning_Plan> tags.
 '''
 
@@ -307,7 +301,7 @@ You are a smart assistant tasked with recommending personalized learning materia
 {learning_plan}
 </student_learning_plan>
 
-** CURATED LEARNING MATERIALS **
+** LEARNING MATERIALS **
 
 Below is a list of {learning_materials_count} items:
 
@@ -317,10 +311,11 @@ Below is a list of {learning_materials_count} items:
 
 ** INSTRUCTIONS **
 
-Select 6 optimal materials that best suit the student’s needs. Return a Python list of numbers. 
+From the LEARNING MATERIALS list, select 4 OPTIMAL MATERIALS that best suit the student’s needs. Return materials as a Python list of unique numbers.
 
 ** OUTPUT FORMAT **
-Respond with a Python integer list in the format like "[1,2,3,4,5,6]".
+
+Respond with a Python integer list of length 4. For example, if you pick materials 1, 2, 3 and 4 you would provide a list "[1,2,3,4]".
 '''
 
 PROMPT_TEMPLATE_MILESTONES = '''
@@ -372,7 +367,7 @@ In you response, provide a list in the following format inside <milestones> tags
 </milestones>
 
 Important:
--The number N of milestones depends on the length and content in the learning plan and must be between 3-10. Never create more than 10 milestones!
+-The number N of milestones depends on the length and content in the learning plan and MUST BE BETWEEN 5-10. Never create more than 10 milestones!
 -All milestones must be related to the learning plan and personalized for the student
 -Milestones must be practical, clear and logical. Follow a good pedagogical process in creating milestones.
 '''
@@ -603,9 +598,10 @@ def create_plan_prompt(incoming_survey_data,core_modules_data,study_materials, p
         prompt = prompt.replace('{beginner_level_materials}', beginner_materials_str)
         prompt = prompt.replace('{skill_gaps_count}', str(count))
         prompt = prompt.replace('{ending_text}', ending_text)
-    elif phase == 2:
-        prompt = PROMPT_TEMPLATE_PHASE2.replace('{student_information}', student_information_prompt)
+    elif phase > 1:
+        prompt = PROMPT_TEMPLATE_PHASE2_4.replace('{student_information}', student_information_prompt)
         prompt = prompt.replace('{core_modules_description}', core_modules_data)
+        prompt = prompt.replace('{module_number}', str(phase))
     else:
         raise ValueError("Invalid phase specified.")
     # Retrieve student identifier from a key field (for example, Q1. Full Name)
@@ -730,11 +726,17 @@ def main():
             phase1_result['smart_plan'], phase1_result['student_info'], phase1_result['recommended_materials']
         )
         pdf_content_phase1 = markdown_to_pdf(updated_plan_phase1_to_pdf)
+
         # Generate plan for phase 2 (training)
         phase2_result = plan_generator.generate_phase_plan(student_data, phase=2)
-        pdf_content_phase2 = markdown_to_pdf(phase2_result['smart_plan'])
+        phase3_result = plan_generator.generate_phase_plan(student_data, phase=3)
+        phase4_result = plan_generator.generate_phase_plan(student_data, phase=4)
 
-        milestones_raw, milestones = plan_generator.generate_milestones(phase2_result['smart_plan'],student_data,core_modules_data)
+        pdf_content_phase2 = markdown_to_pdf(phase2_result['smart_plan'])
+        pdf_content_phase3 = markdown_to_pdf(phase3_result['smart_plan'])
+        pdf_content_phase4 = markdown_to_pdf(phase4_result['smart_plan'])
+
+        milestones_raw, milestones = 'EMPTY_LIST',[] #plan_generator.generate_milestones(phase4_result['smart_plan'],student_data,core_modules_data)
 
         # Generate assistant prompt for chatbot usage
         assistant_prompt = PROMPT_TEMPLATE_ASSISTANT.replace('{student_information}', phase1_result['student_info'])
@@ -746,12 +748,18 @@ def main():
         # Store the study plans for this student
         study_plans[student_id] = {
             'plan_prompt_phase1': phase1_result['plan_prompt'],
-            'smart_plan_phase1': updated_plan_phase1,
-            'milestones': milestones,
-            'smart_plan_pdf_phase1': pdf_content_phase1,
             'plan_prompt_phase2': phase2_result['plan_prompt'],
+            'plan_prompt_phase3': phase3_result['plan_prompt'],
+            'plan_prompt_phase4': phase4_result['plan_prompt'],
+            'smart_plan_phase1': updated_plan_phase1,
             'smart_plan_phase2': phase2_result['smart_plan'],
+            'smart_plan_phase3': phase3_result['smart_plan'],
+            'smart_plan_phase4': phase4_result['smart_plan'],
+            'smart_plan_pdf_phase1': pdf_content_phase1,
             'smart_plan_pdf_phase2': pdf_content_phase2,
+            'smart_plan_pdf_phase3': pdf_content_phase3,
+            'smart_plan_pdf_phase4': pdf_content_phase4,
+            'milestones': milestones,
             'data': student_data,
             'assistant_prompt': assistant_prompt,
             'password': password
@@ -767,15 +775,21 @@ def main():
         df_rows.append({
             'id_username': sid,
             'plan_prompt_phase1': details['plan_prompt_phase1'],
-            'smart_plan_phase1': details['smart_plan_phase1'],
             'plan_prompt_phase2': details['plan_prompt_phase2'],
+            'plan_prompt_phase3': details['plan_prompt_phase3'],
+            'plan_prompt_phase4': details['plan_prompt_phase4'],
+            'smart_plan_phase1': details['smart_plan_phase1'],
             'smart_plan_phase2': details['smart_plan_phase2'],
+            'smart_plan_phase3': details['smart_plan_phase3'],
+            'smart_plan_phase4': details['smart_plan_phase4'],
             'assistant_prompt': details['assistant_prompt'],
             'milestones': details['milestones'],
             'password': details['password']
         })
         save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase1.pdf', study_plans[sid]['smart_plan_pdf_phase1'])
         save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase2.pdf', study_plans[sid]['smart_plan_pdf_phase2'])
+        save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase3.pdf', study_plans[sid]['smart_plan_pdf_phase3'])
+        save_pdf_file(plan_output_path + os.sep + f'{sid}_plan_phase4.pdf', study_plans[sid]['smart_plan_pdf_phase4'])
 
     df_output = pd.DataFrame(df_rows)
     df_output.to_csv('study_plans_data.csv', index=False)

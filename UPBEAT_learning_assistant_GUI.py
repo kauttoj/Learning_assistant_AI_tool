@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 # --- CONFIGURATION ---
 IS_DEBUG = 1
 ENABLE_CHAT = 0
+ENABLE_MILESTONES = 0
 STUDY_PLANS_FILE = r'learning_plans/study_plans_data.pickle'
 CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
 LLM_MODEL="gpt-4o"
@@ -31,13 +32,17 @@ ENABLE_STREAM=1
 
 # --- ENVIRONMENT SETUP ---
 def setup_environment():
-    """Load environment variables and setup initial state"""
-    load_dotenv('.env')
 
-    # Set environment variables from .env file
-    #os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
-    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-    os.environ["TAVILY_API_KEY"] = os.getenv('TAVILY_API_KEY')
+    os.environ["OPENAI_API_KEY"] = "DUMMY"
+    os.environ["TAVILY_API_KEY"] = "DUMMY"
+
+    if ENABLE_CHAT:
+        """Load environment variables and setup initial state"""
+        load_dotenv('.env')
+        # Set environment variables from .env file
+        #os.environ["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
+        os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+        os.environ["TAVILY_API_KEY"] = os.getenv('TAVILY_API_KEY')
 
     # Determine current phase
     current_time = datetime.now()
@@ -318,7 +323,7 @@ def save_pdf_file():
 def load_user_data(*args):
     """Load user greeting message based on selected phase"""
     user_name = user_data['data']['Q1. Full Name']
-    return f"Hello **{user_name}**! Below is you personalized UPBEAT learning plan for the selected phase."
+    return f"Hello **{user_name}**! Below is your personalized learning plan for the selected phase."
 
 def load_smart_plan(*args):
     """Load the appropriate smart plan based on selected phase"""
@@ -567,7 +572,8 @@ def create_chatbot_interface():
 
                 with gr.Row():
                     toggle_button = gr.Button("Show/Hide learning plan", elem_classes="plan-button")
-                    milestones_btn = gr.Button("Show/Hide milestones", elem_classes="plan-button")
+                    if ENABLE_MILESTONES:
+                        milestones_btn = gr.Button("Show/Hide milestones", elem_classes="plan-button")
                     download_btn = gr.Button("Save plan as PDF", elem_classes="plan-button")
                     download_btn_hidden = gr.DownloadButton(visible=False, elem_id="download_btn_hidden")
 
@@ -660,10 +666,11 @@ def create_chatbot_interface():
                         close_milestones_panel,inputs=checkboxes,outputs=[milestones_panel]
                     )
 
-            milestones_btn.click(
-                toggle_milestones_panel,
-                outputs=[milestones_panel]
-            )
+            if ENABLE_MILESTONES:
+                milestones_btn.click(
+                    toggle_milestones_panel,
+                    outputs=[milestones_panel]
+                )
 
             # Settings Panel
             with gr.Column(scale=0, min_width=350, visible=False, elem_id="settings-panel") as settings_panel:
