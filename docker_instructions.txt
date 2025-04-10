@@ -3,7 +3,7 @@ Testing locally:
 docker build -t gradio-app .
 docker run -p 7860:7860 gradio-app
 
-Deploying into OpenShift compatible server that supports conteiner image upload, such as CSC Rahti service:
+Deploying into OpenShift compatible server that supports container image upload, such as CSC Rahti service:
 
 1. Make a Docker hub account that allows easy image sharing. Get your username <USERNAME>
 2. At console, login to the docker hub
@@ -12,6 +12,7 @@ docker login  OR  docker login -u <user> -p <pass>
 docker build -t <USERNAME>/learning_assistant .
 4. If no errors, push image to the hub:
 docker push <USERNAME>/learning_assistant
+VERY IMPORTANT: Make sure your image is in PRIVATE mode unless you want to share it publibly. On default, images are PUBLIC. For Docker hub, you can only have 1 private image for free user. Other services settings might vary.
 5. Go to CSC Rahti or similar OpenShift server console, make a new project and create a new app choosing "container image" and "Image name from external registry"
 6. use this address which should work
 docker.io/<USERNAME>/learning_assistant
