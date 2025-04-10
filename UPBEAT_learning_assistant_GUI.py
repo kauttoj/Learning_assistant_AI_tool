@@ -18,17 +18,19 @@ from dotenv import load_dotenv
 # --- CONFIGURATION ---
 IS_DEBUG = 1
 ENABLE_CHAT = 0
-ENABLE_MILESTONES = 0
+ENABLE_MILESTONES = 1
 STUDY_PLANS_FILE = r'learning_plans/study_plans_data.pickle'
 CURATED_MATERIALS_FILE = r'data/curated_additional_materials.txt'
 LLM_MODEL="gpt-4o"
+ENABLE_STREAM=1
+
+# Hard-coded training timetable that determine the phase
 TRAINING_PERIODS = {
     1: (datetime(2025, month=2, day=1, hour=6),datetime(2025, month=2, day=2, hour=6)),
     2: (datetime(2025, month=2, day=2, hour=6),datetime(2025, month=2, day=3, hour=6)),
     3: (datetime(2025, month=2, day=3, hour=6),datetime(2025, month=2, day=4, hour=6)),
-    4: (datetime(2025, month=2, day=4, hour=6),datetime(2025, month=2, day=5, hour=6)),
+    4: (datetime(2025, month=4, day=9, hour=6),datetime(2025, month=2, day=5, hour=6)),
 }
-ENABLE_STREAM=1
 
 # --- ENVIRONMENT SETUP ---
 def setup_environment():
@@ -47,7 +49,7 @@ def setup_environment():
     # Determine current phase
     current_time = datetime.now()
     if IS_DEBUG==1:
-        return 5  # Force phase 2 in debug mode
+        return 3  # Force phase 2 in debug mode
     else:
         for k,dates in TRAINING_PERIODS.items():
             if k==1 and (current_time<dates[0]):
@@ -240,18 +242,19 @@ def save_user_state(username, state):
 
     try:
         # First write to a temporary file
-        with open(temp_file, 'wb') as f:
-            pickle.dump(state, f)
-            f.flush()  # Ensure data is written to disk
-            os.fsync(f.fileno())  # Force write to physical storage
+        if ENABLE_MILESTONES:
+            with open(temp_file, 'wb') as f:
+                pickle.dump(state, f)
+                f.flush()  # Ensure data is written to disk
+                os.fsync(f.fileno())  # Force write to physical storage
 
-        # Then rename the temp file to the target file (atomic operation)
-        if os.path.exists(state_file):
-            # On Windows, we need to remove the target file first
-            if os.name == 'nt' and os.path.exists(state_file):
-                os.remove(state_file)
+            # Then rename the temp file to the target file (atomic operation)
+            if os.path.exists(state_file):
+                # On Windows, we need to remove the target file first
+                if os.name == 'nt' and os.path.exists(state_file):
+                    os.remove(state_file)
 
-        os.rename(temp_file, state_file)
+            os.rename(temp_file, state_file)
         return True
     except Exception as e:
         print(f"Error saving user state: {e}")
@@ -311,7 +314,7 @@ def save_pdf_file():
     file_name = f"UPBEAT_learning_plan_phase{current_selected_phase}"
     file_path = os.path.join(tempfile.gettempdir(), file_name)
 
-    pdf_data_key =  f"smart_plan_pdf_phase{current_selected_phase}"
+    pdf_data_key = f"smart_plan_pdf_phase{current_selected_phase}"
 
     print(f'writing PDF file {file_path}...',end='')
     with open(file_path, 'wb') as pdf_file:
@@ -349,7 +352,7 @@ def apply_and_close(system_prompt, temperature, learning_plans_checkbox,
     llm_options['use_search_tool'] = int(internet_search_checkbox)
     llm_options['use_milestones_tool'] = int(milestones_checkbox)
     llm_options['use_learningmaterial_tool'] = int(learning_material_checkbox)
-    llm_options['temperature'] = max(0, min(1.0, float(temperature)))
+    llm_options['temperature'] = max(0,min(1.0, float(temperature)))
 
     update_agents()
     return gr.update(visible=False)
@@ -461,7 +464,7 @@ def create_chatbot_interface():
         width: 120px !important;
         min-width: 120px !important;
         max-width: 120px !important;
-        background-color: #f0f0f0;
+        background-color: #f0f0f0 !important;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -471,12 +474,15 @@ def create_chatbot_interface():
         top: 0;
         bottom: 0;
         padding-top: 20px;
-    }
+    }    
     #main-panel {
-        margin-left: 50px;
-        width: calc(100% - 160px);
+        margin-left: 120px; /* match sidebar width */
         padding: 20px;
+        flex-grow: 1;
+        min-width: 0;
+        width: auto;
     }
+    
     #settings-panel {
         position: absolute;
         top: 20px;
@@ -488,7 +494,8 @@ def create_chatbot_interface():
         border: 2px solid #ccc;
         box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
         z-index: 1000;
-    }    
+    }
+    
     #milestones-panel {
         position: absolute;
         top: 40px;
@@ -501,35 +508,48 @@ def create_chatbot_interface():
         border: 2px solid #ccc;
         box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
         z-index: 1000;
-    }        
+    }
+    
     #system-prompt-box textarea {
         overflow-y: auto !important;
         resize: vertical;
         max-height: 300px;
     }
+    
     .plan-button {
         min-width: 165px;
         max-width: 165px;
         padding: 10px 20px;
         font-size: 14px;
         white-space: nowrap;
-    }        
+    }
+    
     .green-button {
         background-color: #4CAF50;
         color: white;
         border-color: #4CAF50;
         border: 3px solid black !important;
         padding: 10px;
-        font-size: 16px;        
+        font-size: 16px;
     }
+    
     .gray-button {
         background-color: #f0f0f0;
         color: black;
         border-color: #ccc;
         border: 3px solid black !important;
         padding: 10px;
-        font-size: 16px;        
+        font-size: 16px;
     }
+    
+    /* Optional: Apply full flex layout to root if not already */
+    .gradio-container > .gr-blocks {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 100%;
+    }
+
     """
     global checkbox_elems
 
@@ -744,9 +764,7 @@ def create_chatbot_interface():
                         outputs=settings_panel
                     )
                     close_no_changes_button.click(close_no_changes, outputs=settings_panel)
-
         app.load(lambda x: x, inputs=[rerender_trigger], outputs=[rerender_trigger])
-
     return app
 
 # --- MAIN EXECUTION ---
@@ -758,7 +776,7 @@ def main():
     # Launch the app with appropriate settings
     if IS_DEBUG>0:
         IDs = list(user_datasets.keys())
-        ind = IS_DEBUG
+        ind = 0
         print(f'!! DEBUG MODE ({IS_DEBUG}): Auto-login as {IDs[ind]} !!')
         authenticate(username=IDs[ind], password=user_datasets[IDs[ind]]["password"])
         update_agents()
